@@ -1,18 +1,13 @@
-#!/usr/bin/env python
 # coding:utf-8
 from itertools import groupby
-
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, fills
 from openpyxl.utils import get_column_letter
-
-import MySQLdb
-import pickle
+import pymysql
+import pymysql.cursors
 from os import path
-
 from time import strftime
-
-from config import conf
+from config import db_conf
 
 wb = Workbook()
 
@@ -27,37 +22,42 @@ grayed_style = PatternFill(fill_type=fills.FILL_SOLID, start_color='eeeeee')
 
 # dates
 today = strftime('%d.%m.%Y')
-today_year_leads = strftime('%Y-%m-%d')
 
 FULLPATH = path.dirname(path.abspath(__file__))
-PKL_CACHE = path.join(FULLPATH, 'q_res.pkl')
-REQ_FILE = path.join(FULLPATH, 'req.sql')
-FILENAME = path.join(FULLPATH, 'result', 'report_tariffs_{}.xlsx'.format(today_year_leads))
+FILENAME = path.join(FULLPATH, 'report_{}.xlsx'.format(strftime('%Y-%m-%d')))
 
 
 def get_from_db():
-    with open(REQ_FILE) as q_file:
-        qry = q_file.read()
-    if qry is not None:
-        connection = MySQLdb.connect(**conf)
-        cursor = connection.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute(qry)
-        q_res = cursor.fetchall()
-        connection.close()
+    # noinspection SqlResolve
+    qry = '''
+    select
+      s.uid,
+      s.jur,
+      s.house_id,
+      s.city,
+      s.addr,
+      s.tname,
+      s.speed,
+      s.price
+    from
+      stat_tariffs_addresses as s
+    where
+      s.date = current_date
+    group by uid
+    order by addr   
+    '''
+    connection = pymysql.connect(**db_conf,
+                                 use_unicode=True,
+                                 charset="utf8",
+                                 cursorclass=pymysql.cursors.DictCursor,
+                                 autocommit=True)
+    with connection:
+        with connection.cursor() as cursor:
+            cursor.execute(qry)
+            q_res = cursor.fetchall()
+    return q_res
 
-        with open(PKL_CACHE, 'w') as res_file:
-            pickle.dump(q_res, res_file)
 
-        return q_res
-
-
-def get_from_cache():
-    with open(PKL_CACHE, 'rb') as res_file:
-        q_res = pickle.load(res_file)
-        return q_res
-
-
-# data = get_from_cache() if path.exists(PKL_CACHE) else get_from_db()
 data = get_from_db()
 
 
@@ -243,7 +243,6 @@ def make_cities_report(jur, ws):
             ws.cell(column=col, row=3, value=t['speed'])
             ws.cell(column=col, row=4, value=t['cost'])
             col += 1
-    sum_title = ws.cell(column=col, row=2, value=u"СУММА")
 
     ws.freeze_panes = ws['C7']
 
@@ -273,7 +272,7 @@ def make_cities_report(jur, ws):
         ws.cell(column=cur_col + 1, row=cur_row, value=u"кол-во")
         ws.cell(column=cur_col + 1, row=cur_row + 1, value=u"доходность")
 
-        for tariff_name, tariff_column in added_tariffs.iteritems():
+        for tariff_name, tariff_column in added_tariffs.items():
             records_with_this_tariff = [r for r in data_ if r['city'] == city and r['tname'] == tariff_name]
             cur_count_cell = ws.cell(column=tariff_column, row=cur_row, value=len(records_with_this_tariff))
 
@@ -317,10 +316,10 @@ def make_cities_report(jur, ws):
 
     # profit & amount sums row
 
-    for clm, cells in amount_cells.iteritems():
+    for clm, cells in amount_cells.items():
         ws.cell(column=clm, row=amount_row, value='={}'.format('+'.join(cells)))
 
-    for clm, cells in profit_cells.iteritems():
+    for clm, cells in profit_cells.items():
         ws.cell(column=clm, row=profit_row, value='={}'.format('+'.join(cells)))
 
     # apply font styles
@@ -340,12 +339,11 @@ def make_cities_report(jur, ws):
     ws['A1'].font = font_arial_12_bold
 
 
-ws_first = wb.active
-ws_first.title = u'ФЛ по нас.пунктам'
-make_cities_report(False, ws_first)
-make_cities_report(True, wb.create_sheet(u'ЮЛ по нас.пунктам'))
-
-make_report(False, ws=wb.create_sheet(u'ФЛ все'))
-make_report(True, ws=wb.create_sheet(u'ЮЛ все'))
-
-wb.save(FILENAME)
+if __name__ == '__main__':
+    ws_first = wb.active
+    ws_first.title = u'ФЛ по нас.пунктам'
+    make_cities_report(jur=False, ws=ws_first)
+    make_cities_report(jur=True, ws=wb.create_sheet(u'ЮЛ по нас.пунктам'))
+    make_report(jur=False, ws=wb.create_sheet(u'ФЛ все'))
+    make_report(jur=True, ws=wb.create_sheet(u'ЮЛ все'))
+    wb.save(FILENAME)

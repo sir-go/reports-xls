@@ -1,8 +1,6 @@
-conf = dict(
-    host='//',
-    user='reports',
-    passwd='//',
-    db='rep_internet',
-    use_unicode=True,
-    charset='utf8'
+db_conf = dict(
+    host='',
+    user='',
+    passwd='',
+    db=''
 )
