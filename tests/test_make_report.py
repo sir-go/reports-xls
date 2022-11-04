@@ -24,7 +24,7 @@ def workbook_md5(wb: Workbook):
 
 
 def test_make_report(db_data, tmp_path):
-    wb_test = openpyxl.load_workbook('tests/dumps/report_10.01.2048.xlsx')
+    wb_test = openpyxl.load_workbook('tests/dumps/report_2048-01-10.xlsx')
 
     wb = Workbook()
     ws_first = wb.active

@@ -2,27 +2,52 @@
 
 ## TeleTime billing DB to MS Excel report generator
 
-The script requests data from the MySQL DB and generates multi-page XLS report with formulas and fields freezing.
+The script requests data from the MySQL DB and generates multi-page 
+XLS report with formulas and fields freezing.
 
 ### Install
+
+To virtualenv
+
 ```bash
 virtualenv venv
 source ./venv/bin/activate
 pip install -r requirements.txt
 ```
+or build image
 
-### Config
-`config.py` must contain `db_conf` dict:
-```python
-db_conf = dict(
-    host='',    # DB host
-    user='',    # DB username
-    passwd='',  # DB password
-    db=''       # DB name
-)
+| build-arg | meaning           | default  |
+|-----------|-------------------|----------|
+| UID       | running user ID   | 1000     |
+| GID       | running group ID  | 1000     |
+| OUT       | report saving dir | /app/out |
+
+```bash
+docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) . -t reports-xls
 ```
 
+### Config
+
+Env variables
+
+| variable     | meaning           |
+|--------------|-------------------|
+| REP_HOST     | DB host           |
+| REP_USERNAME | DB username       |
+| REP_PASSWORD | DB password       |
+| REP_DB       | DB name           |
+| REP_OUT      | report saving dir |
+
+
 ### Run
+
+Standalone
+
 ```bash
 python make_report.py
+```
+or container (variables are in the `.env` file here)
+
+```bash
+docker run --rm -it --env-file .env -v ${PWD}/out:/app/out reports-xls
 ```

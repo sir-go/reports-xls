@@ -1,4 +1,5 @@
 # coding:utf-8
+import os
 from itertools import groupby
 from openpyxl import Workbook
 from openpyxl.worksheet import worksheet
@@ -6,9 +7,15 @@ from openpyxl.styles import Font, Alignment, PatternFill, fills
 from openpyxl.utils import get_column_letter
 import pymysql
 import pymysql.cursors
-from os import path
+from os import path, environ
 from time import strftime
-from config import db_conf
+
+conf = dict(
+    host=environ.get('REP_HOST'),
+    user=environ.get('REP_USERNAME'),
+    passwd=environ.get('REP_PASSWORD'),
+    db=environ.get('REP_DB')
+)
 
 
 def get_from_db():
@@ -29,7 +36,7 @@ def get_from_db():
     group by uid
     order by addr   
     '''
-    connection = pymysql.connect(**db_conf,
+    connection = pymysql.connect(**conf,
                                  use_unicode=True,
                                  charset="utf8",
                                  cursorclass=pymysql.cursors.DictCursor,
@@ -364,8 +371,8 @@ def make_all_reports():
     make_report(today, data=data, jur=False, ws=wb.create_sheet(u'ФЛ все'))
     make_report(today, data=data, jur=True, ws=wb.create_sheet(u'ЮЛ все'))
 
-    fullpath = path.dirname(path.abspath(__file__))
-    filename = path.join(fullpath,
+    here = path.dirname(path.abspath(__file__))
+    filename = path.join(os.environ.get('REP_OUT', here),
                          'report_{}.xlsx'.format(strftime('%Y-%m-%d')))
 
     wb.save(filename)
