@@ -1,6 +1,7 @@
 # coding:utf-8
 from itertools import groupby
 from openpyxl import Workbook
+from openpyxl.worksheet import worksheet
 from openpyxl.styles import Font, Alignment, PatternFill, fills
 from openpyxl.utils import get_column_letter
 import pymysql
@@ -9,26 +10,8 @@ from os import path
 from time import strftime
 from config import db_conf
 
-wb = Workbook()
-
-# styles
-vertical_middle = Alignment(vertical='center')
-horizontal_center_90_deg = Alignment(horizontal='center', text_rotation=90)
-style_title = Alignment(wrap_text=True)
-font_arial_10 = Font(name='Arial', sz=10)
-font_arial_12_bold = Font(name='Arial', sz=12, b=True)
-font_arial_10_bold = Font(name='Arial', sz=10, b=True)
-grayed_style = PatternFill(fill_type=fills.FILL_SOLID, start_color='eeeeee')
-
-# dates
-today = strftime('%d.%m.%Y')
-
-FULLPATH = path.dirname(path.abspath(__file__))
-FILENAME = path.join(FULLPATH, 'report_{}.xlsx'.format(strftime('%Y-%m-%d')))
-
 
 def get_from_db():
-    # noinspection SqlResolve
     qry = '''
     select
       s.uid,
@@ -58,13 +41,17 @@ def get_from_db():
     return q_res
 
 
-data = get_from_db()
-
-
-def make_report(jur=False, ws=None):
+def make_report(
+        today: str, data: list[dict], jur: bool = False, ws: worksheet = None):
     # filter by juridical condition
 
     data_ = [record for record in data if record['jur'] == jur]
+
+    # styles
+    vertical_middle = Alignment(vertical='center')
+    horizontal_center_90_deg = Alignment(horizontal='center', text_rotation=90)
+    font_arial_10 = Font(name='Arial', sz=10)
+    font_arial_12_bold = Font(name='Arial', sz=12, b=True)
 
     # header
 
@@ -83,7 +70,7 @@ def make_report(jur=False, ws=None):
     ws['A5'] = u'кол-во абонентов'
     ws['A6'] = u'доходность р/мес'
 
-    # tarrifs row
+    # tariffs row
 
     tariffs = []
 
@@ -108,7 +95,7 @@ def make_report(jur=False, ws=None):
             col += 1
     ws.cell(column=col, row=2, value=u"СУММА")
 
-    # addressess column
+    # addresses column
 
     matrix = {}
     row = 7
@@ -139,14 +126,17 @@ def make_report(jur=False, ws=None):
     for cur_col in range(2, len(added_tariffs) + 2):
         cur_row = 5
         cell_first = ws.cell(column=cur_col, row=cur_row + 2)
-        cell_last = ws.cell(column=cur_col, row=cur_row + len(added_addresses) + 1)
+        cell_last = ws.cell(column=cur_col,
+                            row=cur_row + len(added_addresses) + 1)
 
-        formula_sum = '=sum({}:{})'.format(cell_first.coordinate, cell_last.coordinate)
+        formula_sum = '=SUM({}:{})'.format(
+            cell_first.coordinate, cell_last.coordinate)
         ws.cell(column=cur_col, row=cur_row, value=formula_sum)
 
         cell_amount = ws.cell(column=cur_col, row=cur_row)
         cell_price = ws.cell(column=cur_col, row=cur_row - 1)
-        formula_profit = '={}*{}'.format(cell_amount.coordinate, cell_price.coordinate)
+        formula_profit = '={}*{}'.format(
+            cell_amount.coordinate, cell_price.coordinate)
         ws.cell(column=cur_col, row=cur_row + 1, value=formula_profit)
 
     # # sum column
@@ -159,7 +149,7 @@ def make_report(jur=False, ws=None):
 
         # print(cf.coordinate, ce.coordinate)
 
-        formula_sum = '=sum({}:{})'.format(cf.coordinate, ce.coordinate)
+        formula_sum = '=SUM({}:{})'.format(cf.coordinate, ce.coordinate)
         ws.cell(column=len(added_tariffs) + 2, row=row, value=formula_sum)
 
     # freeze
@@ -187,10 +177,22 @@ def make_report(jur=False, ws=None):
     ws['A1'].font = font_arial_12_bold
 
 
-def make_cities_report(jur, ws):
+def make_cities_report(
+        today: str, data: list[dict], jur: bool = False, ws: worksheet = None):
     # filter by juridical condition
 
     data_ = [record for record in data if record['jur'] == jur]
+
+    # styles
+    vertical_middle = Alignment(vertical='center')
+    horizontal_center_90_deg = Alignment(horizontal='center', text_rotation=90)
+    style_title = Alignment(wrap_text=True)
+    font_arial_10 = Font(name='Arial', sz=10)
+    font_arial_12_bold = Font(name='Arial', sz=12, b=True)
+    font_arial_10_bold = Font(name='Arial', sz=10, b=True)
+    # noinspection SpellCheckingInspection
+    grayed_style = PatternFill(
+        fill_type=fills.FILL_SOLID, start_color='eeeeee')
 
     # header
 
@@ -220,7 +222,7 @@ def make_cities_report(jur, ws):
 
     grid_begin_row = profit_row + 1
 
-    # tarrifs row
+    # tariffs row
 
     tariffs = []
 
@@ -273,14 +275,19 @@ def make_cities_report(jur, ws):
         ws.cell(column=cur_col + 1, row=cur_row + 1, value=u"доходность")
 
         for tariff_name, tariff_column in added_tariffs.items():
-            records_with_this_tariff = [r for r in data_ if r['city'] == city and r['tname'] == tariff_name]
-            cur_count_cell = ws.cell(column=tariff_column, row=cur_row, value=len(records_with_this_tariff))
+            records_with_this_tariff = [
+                r for r in data_
+                if r['city'] == city and r['tname'] == tariff_name]
+            cur_count_cell = ws.cell(
+                column=tariff_column, row=cur_row,
+                value=len(records_with_this_tariff))
 
             price_cell = ws.cell(column=tariff_column, row=price_row)
-            cur_profit_cell = ws.cell(column=tariff_column, row=cur_row + 1, value='={}*{}'.format(
-                price_cell.coordinate,
-                cur_count_cell.coordinate
-            ))
+            cur_profit_cell = ws.cell(
+                column=tariff_column, row=cur_row + 1, value='={}*{}'.format(
+                    price_cell.coordinate,
+                    cur_count_cell.coordinate
+                ))
 
             if tariff_column not in amount_cells:
                 amount_cells[tariff_column] = []
@@ -294,12 +301,13 @@ def make_cities_report(jur, ws):
 
         cf = ws.cell(column=cur_col + 2, row=cur_row)
         ce = ws.cell(column=len(added_tariffs) + 2, row=cur_row)
-        ws.cell(column=len(added_tariffs) + 3, row=cur_row, value='=sum({}:{})'.format(cf.coordinate, ce.coordinate))
+        ws.cell(column=len(added_tariffs) + 3, row=cur_row,
+                value='=SUM({}:{})'.format(cf.coordinate, ce.coordinate))
 
         cf = ws.cell(column=cur_col + 2, row=cur_row + 1)
         ce = ws.cell(column=len(added_tariffs) + 2, row=cur_row + 1)
         ws.cell(column=len(added_tariffs) + 3, row=cur_row + 1,
-                value='=sum({}:{})'.format(cf.coordinate, ce.coordinate))
+                value='=SUM({}:{})'.format(cf.coordinate, ce.coordinate))
 
         cur_row += 2
 
@@ -307,20 +315,24 @@ def make_cities_report(jur, ws):
     sum_amount_cf = ws.cell(column=cur_col + 2, row=amount_row)
     sum_amount_ce = ws.cell(column=len(added_tariffs) + 2, row=amount_row)
     sum_amount_cell = ws.cell(column=len(added_tariffs) + 3, row=amount_row)
-    sum_amount_cell.value = '=sum({}:{})'.format(sum_amount_cf.coordinate, sum_amount_ce.coordinate)
+    sum_amount_cell.value = '=SUM({}:{})'.format(sum_amount_cf.coordinate,
+                                                 sum_amount_ce.coordinate)
 
     sum_profit_cf = ws.cell(column=cur_col + 2, row=profit_row)
     sum_profit_ce = ws.cell(column=len(added_tariffs) + 2, row=profit_row)
     sum_profit_cell = ws.cell(column=len(added_tariffs) + 3, row=profit_row)
-    sum_profit_cell.value = '=sum({}:{})'.format(sum_profit_cf.coordinate, sum_profit_ce.coordinate)
+    sum_profit_cell.value = '=SUM({}:{})'.format(sum_profit_cf.coordinate,
+                                                 sum_profit_ce.coordinate)
 
     # profit & amount sums row
 
     for clm, cells in amount_cells.items():
-        ws.cell(column=clm, row=amount_row, value='={}'.format('+'.join(cells)))
+        ws.cell(column=clm, row=amount_row,
+                value='={}'.format('+'.join(cells)))
 
     for clm, cells in profit_cells.items():
-        ws.cell(column=clm, row=profit_row, value='={}'.format('+'.join(cells)))
+        ws.cell(column=clm, row=profit_row,
+                value='={}'.format('+'.join(cells)))
 
     # apply font styles
     sum_cell = ws.cell(column=len(added_tariffs) + 3, row=amount_row)
@@ -339,11 +351,25 @@ def make_cities_report(jur, ws):
     ws['A1'].font = font_arial_12_bold
 
 
-if __name__ == '__main__':
+def make_all_reports():
+    wb = Workbook()
     ws_first = wb.active
     ws_first.title = u'ФЛ по нас.пунктам'
-    make_cities_report(jur=False, ws=ws_first)
-    make_cities_report(jur=True, ws=wb.create_sheet(u'ЮЛ по нас.пунктам'))
-    make_report(jur=False, ws=wb.create_sheet(u'ФЛ все'))
-    make_report(jur=True, ws=wb.create_sheet(u'ЮЛ все'))
-    wb.save(FILENAME)
+    today = strftime('%d.%m.%Y')
+    data = get_from_db()
+    make_cities_report(today, data=data, jur=False,
+                       ws=ws_first)
+    make_cities_report(today, data=data, jur=True,
+                       ws=wb.create_sheet(u'ЮЛ по нас.пунктам'))
+    make_report(today, data=data, jur=False, ws=wb.create_sheet(u'ФЛ все'))
+    make_report(today, data=data, jur=True, ws=wb.create_sheet(u'ЮЛ все'))
+
+    fullpath = path.dirname(path.abspath(__file__))
+    filename = path.join(fullpath,
+                         'report_{}.xlsx'.format(strftime('%Y-%m-%d')))
+
+    wb.save(filename)
+
+
+if __name__ == '__main__':
+    make_all_reports()
