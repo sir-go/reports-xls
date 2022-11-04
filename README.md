@@ -1,3 +1,5 @@
+[![Tests](https://github.com/sir-go/reports-xls/actions/workflows/python-app.yml/badge.svg)](https://github.com/sir-go/reports-xls/actions/workflows/python-app.yml)
+
 ## TeleTime billing DB to MS Excel report generator
 
 The script requests data from the MySQL DB and generates multi-page XLS report with formulas and fields freezing.
