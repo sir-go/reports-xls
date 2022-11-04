@@ -14,7 +14,7 @@ virtualenv venv
 source ./venv/bin/activate
 pip install -r requirements.txt
 ```
-or build image
+or build a Docker image
 
 | build-arg | meaning           | default  |
 |-----------|-------------------|----------|
@@ -25,7 +25,7 @@ or build image
 ```bash
 docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) . -t reports-xls
 ```
-
+___
 ### Config
 
 Env variables
@@ -38,15 +38,22 @@ Env variables
 | REP_DB       | DB name           |
 | REP_OUT      | report saving dir |
 
+___
+### Test
 
+```bash
+python -m pytest
+```
+
+___
 ### Run
 
-Standalone
+#### Standalone
 
 ```bash
 python make_report.py
 ```
-or container (variables are in the `.env` file here)
+#### or Docker container (variables are in the `.env` file here)
 
 ```bash
 docker run --rm -it --env-file .env -v ${PWD}/out:/app/out reports-xls
