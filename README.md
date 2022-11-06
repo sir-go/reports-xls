@@ -1,12 +1,11 @@
 [![Tests](https://github.com/sir-go/reports-xls/actions/workflows/python-app.yml/badge.svg)](https://github.com/sir-go/reports-xls/actions/workflows/python-app.yml)
 
-## TeleTime billing DB to MS Excel report generator
+# TeleTime billing DB to MS Excel report generator
 
 The script requests data from the MySQL DB and generates multi-page 
 XLS report with formulas and fields freezing.
 
-### Install
-
+## Install
 To virtualenv
 
 ```bash
@@ -25,9 +24,8 @@ or build a Docker image
 ```bash
 docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) . -t reports-xls
 ```
-___
-### Config
 
+## Config
 Env variables
 
 | variable     | meaning           |
@@ -38,23 +36,19 @@ Env variables
 | REP_DB       | DB name           |
 | REP_OUT      | report saving dir |
 
-___
-### Test
 
+## Test
 ```bash
 python -m pytest
 ```
 
-___
-### Run
-
-#### Standalone
-
+## Run
+### Standalone
 ```bash
 python make_report.py
 ```
-#### or Docker container (variables are in the `.env` file here)
 
+### Docker container (variables are in the `.env` file here)
 ```bash
 docker run --rm -it --env-file .env -v ${PWD}/out:/app/out reports-xls
 ```
